@@ -8,9 +8,14 @@ import os
 from typing import Dict, Any, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 import uvicorn
+
+# Image generation imports
+import math
+import random
+from PIL import Image, ImageDraw, ImageFont
 
 # Professional Logo Generator
 from PIL import Image, ImageDraw, ImageFont
@@ -418,6 +423,7 @@ async def generate_logo(request: LogoRequest):
             "success": True,
             "message": "Professional logo generated successfully",
             "logo_path": logo_path,
+            "logo_url": f"/images/{os.path.basename(logo_path)}",  # Add web-accessible URL
             "company_name": request.company_name,
             "industry": request.industry,
             "style": request.style,
@@ -430,6 +436,18 @@ async def generate_logo(request: LogoRequest):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "AI Logo Generator"}
+
+@app.get("/images/{filename}")
+async def serve_image(filename: str):
+    """Serve generated logo images"""
+    try:
+        file_path = os.path.join('/tmp', filename)
+        if os.path.exists(file_path):
+            return FileResponse(file_path, media_type="image/png")
+        else:
+            raise HTTPException(status_code=404, detail="Image not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error serving image: {str(e)}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
